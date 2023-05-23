@@ -1,6 +1,9 @@
 import { defineReadOnlyProperty } from "@harmoniclabs/obj-utils";
 import { assert } from "../../utils/assert";
 import { getElemsT } from "./tyArgs";
+import type { PLam } from "../PTypes";
+import type { PType } from "../PType";
+import type { Term } from "../Term";
 
 export const enum PrimType {
     Int  = "int",
@@ -15,7 +18,8 @@ export const enum PrimType {
     Lambda = "lam",
     Struct = "struct",
     Alias = "alias",
-    AsData = "asData"
+    AsData = "asData",
+    Enum = "enum"
 }
 
 type BaseT
@@ -37,6 +41,8 @@ export type StructT<GSDef extends GenericStructDefinition> = [ PrimType.Struct, 
 export type AliasT<T extends GenericTermType> = T[0] extends PrimType.Alias ? T : [ PrimType.Alias, T ];
 
 export type AsDataT<T extends GenericTermType> = T[0] extends PrimType.AsData ? T : [ PrimType.AsData, T ];
+
+export type EnumT<EnumDef extends EnumDefinition> = [ PrimType.Enum, EnumDef ];
 
 export type LamT<InT extends GenericTermType, OutT extends GenericTermType> =  [ PrimType.Lambda, InT, OutT ];
 export type FnT<Ins extends [ GenericTermType, ...GenericTermType[] ], OutT extends GenericTermType> =
@@ -75,7 +81,7 @@ export type TermType
 //*/
 //*
 export type TermType
-    = [ NonStructTag, ...TermType[] ] | [ PrimType.Struct, StructDefinition ]
+    = [ NonStructTag, ...TermType[] ] | [ PrimType.Struct, StructDefinition ] | [ PrimType.Enum, EnumDefinition ]
 //*/
 
 export type StructCtorDef = {
@@ -113,6 +119,14 @@ export function cloneStructDef<SDef extends StructDefinition>( def: Readonly<SDe
     }
 
     return clone;
+}
+
+export type EnumDefinition = {
+    [enumValue: string]: number
+}
+
+export type MethodsImpl = {
+    [ method: string ]: Term<PLam<PType, PType>>
 }
 
 export const int        = Object.freeze([ PrimType.Int  ]) as [ PrimType.Int  ];
@@ -169,6 +183,12 @@ export const struct     = <GSDef extends GenericStructDefinition>( def: GSDef ):
             PrimType.Struct,
             Object.freeze( cloneStructDef( def ) )
         ]) as any;
+
+export const enum_t       = <Def extends EnumDefinition>( def: Def ): EnumT<Def> =>
+    Object.freeze([ 
+        PrimType.Enum,
+        Object.freeze( { ...def } )
+    ]) as any;
 
 export function alias<T extends AliasT<TermType>>( toAlias: T ): T
 export function alias<T extends GenericTermType>( toAlias: T ): [ PrimType.Alias, T ]

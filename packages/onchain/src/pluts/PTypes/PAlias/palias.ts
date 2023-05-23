@@ -1,11 +1,11 @@
 import type { Term } from "../../Term";
 
 import { punsafeConvertType } from "../../lib/punsafeConvertType";
-import { AliasT, PrimType, TermType, alias, data } from "../../type_system/types";
+import { AliasT, MethodsImpl, PrimType, TermType, alias, data } from "../../type_system/types";
 import { PDataRepresentable } from "../../PType/PDataRepresentable";
 import { PData } from "../PData/PData";
 import { ToPType } from "../../type_system/ts-pluts-conversion";
-import { isWellFormedType } from "../../type_system/kinds/isWellFormedType";
+import { isMethodsImpl, isWellFormedType } from "../../type_system/kinds/isWellFormedType";
 import { typeExtends } from "../../type_system/typeExtends";
 import { PappArg, fromData, pappArgToTerm, toData } from "../../lib";
 import { assert } from "../../../utils/assert";
@@ -13,7 +13,7 @@ import { defineReadOnlyProperty } from "@harmoniclabs/obj-utils";
 
 
 /**
- * intermediate class useful to reconize structs form primitives
+ * intermediate class useful to reconize structs from primitives
 **/
 class _PAlias extends PDataRepresentable
 {
@@ -44,7 +44,8 @@ export type PAlias<T extends TermType, PClass extends _PAlias = _PAlias> =
 
 export function palias<T extends TermType>(
     type: T,
-    fromDataConstraint: (( term: Term<ToPType<T>> ) => Term<ToPType<T>>) | undefined = undefined
+    getImpl: ( self_t: AliasT<T> ) => MethodsImpl = _self_t => ({})
+    // fromDataConstraint: (( term: Term<ToPType<T>> ) => Term<ToPType<T>>) | undefined = undefined
 )
 {
     assert(
@@ -77,6 +78,9 @@ export function palias<T extends TermType>(
 
     const thisType: ThisAliasT = alias( type ) as any;
 
+    const impl = typeof getImpl === "function" ? getImpl( thisType ) : {};
+    if( !isMethodsImpl( impl ) ) throw new Error("invalid methods implementation; only plu-ts functions allowed");
+
     defineReadOnlyProperty(
         PAliasExtension,
         "type",
@@ -100,18 +104,6 @@ export function palias<T extends TermType>(
             );
 
             const res = fromData( type )( dataTerm );
-
-            if( typeof fromDataConstraint === "function" )
-            {
-                const constrained = fromDataConstraint( res );
-                
-                assert(
-                    typeExtends( constrained.type, res.type ),
-                    "'fromDataConstraint' changed the type of the term"
-                );
-
-                return punsafeConvertType( constrained, thisType ) as unknown as ThisAliasTerm;
-            }
 
             return punsafeConvertType( res, thisType ) as unknown as ThisAliasTerm;
         }

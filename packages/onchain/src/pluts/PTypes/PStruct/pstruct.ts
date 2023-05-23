@@ -4,9 +4,9 @@ import { PDataRepresentable } from "../../PType/PDataRepresentable";
 import { UtilityTermOf, addUtilityForType } from "../../lib/addUtilityForType";
 
 import { structDefToString, termTypeToString } from "../../type_system/utils";
-import { AliasT, GenericStructCtorDef, GenericStructDefinition, GenericTermType, PrimType, StructCtorDef, StructDefinition, StructT, TermType, alias, asData, data, int, struct, tyVar, unit } from "../../type_system/types";
+import { AliasT, GenericStructCtorDef, GenericStructDefinition, GenericTermType, MethodsImpl, PrimType, StructCtorDef, StructDefinition, StructT, TermType, alias, asData, data, int, struct, tyVar, unit } from "../../type_system/types";
 import { ToPType } from "../../type_system/ts-pluts-conversion";
-import { typeExtends, isStructDefinition, isStructType, isTaggedAsAlias } from "../../type_system";
+import { typeExtends, isStructDefinition, isStructType, isTaggedAsAlias, isMethodsImpl } from "../../type_system";
 import { Term } from "../../Term";
 import { punsafeConvertType } from "../../lib/punsafeConvertType";
 import { TermStruct } from "../../lib/std/UtilityTerms/TermStruct";
@@ -24,7 +24,7 @@ import { IRNative } from "../../../IR/IRNodes/IRNative";
 import { IRApp } from "../../../IR/IRNodes/IRApp";
 
 /**
- * intermediate class useful to reconize structs form primitives
+ * intermediate class useful to reconize structs from primitives
  */
 class _PStruct extends PData
 {
@@ -182,7 +182,10 @@ const RESERVED_STRUCT_KEYS = Object.freeze([
     "raw"
 ]);
 
-export function pstruct<StructDef extends StructDefinition>( def: StructDef ): PStruct<StructDef>
+export function pstruct<StructDef extends StructDefinition>(
+    def: StructDef,
+    getImpl: ( self_t: StructT<StructDef> ) => MethodsImpl = _self_t => ({})
+): PStruct<StructDef>
 {
     assert(
         isStructDefinition( def ),
@@ -207,6 +210,9 @@ export function pstruct<StructDef extends StructDefinition>( def: StructDef ): P
     }
 
     const thisStructType = struct( def );
+
+    const impl = typeof getImpl === "function" ? getImpl( thisStructType ) : {};
+    if( !isMethodsImpl( impl ) ) throw new Error("invalid methods implementation; only plu-ts functions allowed");
 
     defineReadOnlyProperty(
         PStructExt,

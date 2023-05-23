@@ -2,7 +2,8 @@ import { isObject } from "@harmoniclabs/obj-utils";
 import { isPrimTypeTag } from "./isPrimTypeTag";
 import { isTaggedAsAlias } from "./isTaggedAsAlias";
 import { isTypeParam } from "./isTypePAram";
-import { GenericStructDefinition, GenericTermType, PrimType, StructCtorDef, StructDefinition, StructT, TermType } from "../types";
+import { EnumDefinition, GenericStructDefinition, GenericTermType, MethodsImpl, PrimType, StructCtorDef, StructDefinition, StructT, TermType } from "../types";
+import { Term } from "../../Term";
 
 
 function getIsStructDefWithTermTypeCheck( termTypeCheck: ( t: TermType ) => boolean )
@@ -53,6 +54,19 @@ export const isGenericStructDefinition = getIsStructDefWithTermTypeCheck(
     isWellFormedGenericType
 ) as  ( def: object ) => def is GenericStructDefinition;
 
+export function isEnumDefinition( def: any ): def is EnumDefinition
+{
+    return (
+        isObject( def ) &&
+        Object.keys( def ).every( elem => {
+            const n = def[elem];
+            return (
+                typeof n === "number" &&
+                n === Math.round( n )
+            );
+        })
+    );
+}
 
 export function isStructType( t: GenericTermType ): t is StructT<StructDefinition>
 {
@@ -62,6 +76,15 @@ export function isStructType( t: GenericTermType ): t is StructT<StructDefinitio
         t[0] === PrimType.Struct &&
         isStructDefinition( t[1] )
     )
+}
+
+export function isMethodsImpl( impl: any ): impl is MethodsImpl
+{
+    if( !isObject( impl ) ) return false;
+
+    const methodsNames = Object.keys( impl );
+
+    return methodsNames.every( method => impl[method] instanceof Term && impl[method].type[0] === PrimType.Lambda );
 }
 
 export function isGenericStructType( t: GenericTermType ): t is StructT<GenericStructDefinition>
